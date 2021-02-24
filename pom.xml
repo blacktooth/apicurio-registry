@@ -91,6 +91,7 @@
         <module>utils/serde</module>
         <module>utils/sql</module>
         <module>utils/tools</module>
+        <module>schema-compatibility/json</module>
         <module>utils/tests</module>
         <module>search/client</module>
         <module>search/connector</module>
@@ -240,6 +241,11 @@
             <dependency>
                 <groupId>io.apicurio</groupId>
                 <artifactId>apicurio-registry-utils-kafka</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.apicurio</groupId>
+                <artifactId>apicurio-registry-schema-compatibility-json</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
