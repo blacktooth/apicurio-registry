@@ -1,0 +1,67 @@
+syntax = "proto2";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/Wrappers.proto";
+
+
+option java_package = "io.apicurio.registry.utils.protobuf.schema.syntax2";
+option java_multiple_files = true;
+option java_outer_classname = "MyOrderingApplicationSyntax2";
+
+package foo.bar;
+
+//Address Proto
+message Address {
+  required string street = 1 [json_name = "Address_Street"];
+
+  optional int32 zip = 2 [deprecated=true];
+
+  optional AddressType addressType = 4 [default = BUSINESS];
+  optional string city = 3 [default = "Seattle"];
+  optional google.protobuf.Timestamp  ttl = 5;
+  repeated int32 samples = 6 [packed=true];
+  required Country country = 7;
+
+  message Country {
+    required string name = 1;
+    optional bool isRestricted = 2;
+  }
+  map<string, Country> pastAddresses = 8;
+
+}
+
+enum AddressType {
+option allow_alias = true;
+  RESIDENTIAL = 1;
+  BUSINESS = 1;
+  OTHER = 3;
+}
+
+//Customer proto
+message Customer {
+  required string name = 1;
+  required Address address = 3;
+  oneof cust_oneoff {
+    string ssn = 4;
+    string passport = 5;
+    google.protobuf.DoubleValue salary = 6;
+    bytes pgp_signature = 7;
+    sint64 rating = 9;
+  }
+  extend Customer {
+    optional bool isPremium = 101;
+  }
+  reserved 2, 15, 10 to 11;
+  reserved "bank", "credit_card";
+  extensions 100 to 120;
+
+  optional group Extras = 8 {
+    optional string info1 = 1;
+    optional string info2 = 2;
+  }
+}
+
+/* AddressService
+*/
+service AddressService {
+  rpc Search(Customer) returns (Address);
+}
