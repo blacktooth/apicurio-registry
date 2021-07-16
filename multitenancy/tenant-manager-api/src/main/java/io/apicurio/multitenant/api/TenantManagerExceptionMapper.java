@@ -23,12 +23,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
 import javax.ws.rs.ext.Provider;
 
+import org.slf4j.Logger;
 import io.apicurio.multitenant.storage.TenantNotFoundException;
 import io.apicurio.multitenant.api.datamodel.Error;
 
@@ -48,6 +50,9 @@ public class TenantManagerExceptionMapper implements ExceptionMapper<Throwable> 
         CODE_MAP = Collections.unmodifiableMap(map);
     }
 
+    @Inject
+    Logger log;
+
     @Override
     public Response toResponse(Throwable exception) {
         Response.ResponseBuilder builder;
@@ -60,6 +65,10 @@ public class TenantManagerExceptionMapper implements ExceptionMapper<Throwable> 
         } else {
             code = CODE_MAP.getOrDefault(exception.getClass(), HTTP_INTERNAL_ERROR);
             builder = Response.status(code);
+        }
+
+        if (code == HTTP_INTERNAL_ERROR) {
+            log.error(exception.getMessage(), exception);
         }
 
         Error error = new Error();

@@ -18,6 +18,7 @@ objects:
     - port: 8080
       protocol: TCP
       targetPort: 8080
+      name: http
     selector:
       app: apicurio-registry
       template: multitenant-apicurio-registry
@@ -35,6 +36,7 @@ objects:
     - port: 9001
       protocol: TCP
       targetPort: 9001
+      name: api-envoy
     selector:
       app: apicurio-registry
       template: multitenant-apicurio-registry
@@ -45,13 +47,14 @@ objects:
     labels:
       app: apicurio-registry
       template: multitenant-apicurio-registry
-      component: apicurio-registry-envoy
+      component: apicurio-registry-envoy-metrics
     name: apicurio-registry-envoy-metrics
   spec:
     ports:
     - port: 9000
       protocol: TCP
       targetPort: 9000
+      name: metrics-envoy
     selector:
       app: apicurio-registry
       template: multitenant-apicurio-registry
@@ -69,6 +72,7 @@ objects:
     - port: 8585
       protocol: TCP
       targetPort: 8585
+      name: http
     selector:
       app: apicurio-registry
       template: multitenant-apicurio-registry
@@ -115,9 +119,9 @@ objects:
           - name: REGISTRY_ENABLE_MULTITENANCY
             value: "true"
           - name: REGISTRY_LOG_LEVEL
-            value: DEBUG
+            value: ${REGISTRY_LOG_LEVEL}
           - name: LOG_LEVEL
-            value: INFO
+            value: ${REGISTRY_QUARKUS_LOG_LEVEL}
           - name: QUARKUS_PROFILE
             value: prod
 
@@ -157,8 +161,44 @@ objects:
             value: ${KEYCLOAK_REALM}
           - name: KEYCLOAK_API_CLIENT_ID
             value: ${KEYCLOAK_API_CLIENT_ID}
-          - name: KEYCLOAK_UI_CLIENT_ID
-            value: ${KEYCLOAK_UI_CLIENT_ID}
+
+          - name: OWNER_ONLY_AUTHZ_ENABLED
+            value: ${OWNER_ONLY_AUTHZ_ENABLED}
+          - name: ROLE_BASED_AUTHZ_ENABLED
+            value: ${ROLE_BASED_AUTHZ_ENABLED}
+          - name: REGISTRY_AUTH_ADMIN-OVERRIDE_ENABLED
+            value: ${REGISTRY_AUTH_ADMIN-OVERRIDE_ENABLED}
+          - name: REGISTRY_AUTH_ADMIN-OVERRIDE_FROM
+            value: ${REGISTRY_AUTH_ADMIN-OVERRIDE_FROM}
+          - name: REGISTRY_AUTH_ADMIN-OVERRIDE_TYPE
+            value: ${REGISTRY_AUTH_ADMIN-OVERRIDE_TYPE}
+          - name: REGISTRY_AUTH_ADMIN-OVERRIDE_ROLE
+            value: ${REGISTRY_AUTH_ADMIN-OVERRIDE_ROLE}
+          - name: REGISTRY_AUTH_ADMIN-OVERRIDE_CLAIM
+            value: ${REGISTRY_AUTH_ADMIN-OVERRIDE_CLAIM}
+          - name: REGISTRY_AUTH_ADMIN-OVERRIDE_CLAIM-VALUE
+            value: ${REGISTRY_AUTH_ADMIN-OVERRIDE_CLAIM-VALUE}
+          - name: REGISTRY_AUTH_ROLES_ADMIN
+            value: ${REGISTRY_AUTH_ROLES_ADMIN}
+          - name: REGISTRY_AUTH_ROLES_DEVELOPER
+            value: ${REGISTRY_AUTH_ROLES_DEVELOPER}
+          - name: REGISTRY_AUTH_ROLES_READONLY
+            value: ${REGISTRY_AUTH_ROLES_READONLY}
+
+          - name: TENANT_MANAGER_AUTH_URL
+            value: ${KEYCLOAK_URL}
+          - name: TENANT_MANAGER_REALM
+            value: ${KEYCLOAK_REALM}
+          - name: TENANT_MANAGER_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: ${TENANT_MANAGER_CLIENT_SECRET_NAME}
+                key: client-id
+          - name: TENANT_MANAGER_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: ${TENANT_MANAGER_CLIENT_SECRET_NAME}
+                key: client-secret
 
           livenessProbe:
             failureThreshold: 3
@@ -172,7 +212,7 @@ objects:
             timeoutSeconds: 5
           ports:
           - containerPort: 8080
-            name: web
+            name: http
             protocol: TCP
           readinessProbe:
             failureThreshold: 3
@@ -229,13 +269,26 @@ objects:
           - name: QUARKUS_HTTP_PORT
             value: "8585"
           - name: LOG_LEVEL
-            value: INFO
+            value: ${TENANT_MANAGER_QUARKUS_LOG_LEVEL}
           - name: TENANT_MANAGER_LOG_LEVEL
-            value: DEBUG
+            value: ${TENANT_MANAGER_LOG_LEVEL}
+
+          - name: AUTH_ENABLED
+            value: ${AUTH_ENABLED}
+          - name: KEYCLOAK_URL
+            value: ${KEYCLOAK_URL}
+          - name: KEYCLOAK_REALM
+            value: ${KEYCLOAK_REALM}
+          - name: KEYCLOAK_API_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: ${TENANT_MANAGER_CLIENT_SECRET_NAME}
+                key: client-id
+
           livenessProbe:
             failureThreshold: 3
             httpGet:
-              path: /health/live
+              path: /q/health/live
               port: 8585
               scheme: HTTP
             initialDelaySeconds: 5
@@ -245,10 +298,11 @@ objects:
           ports:
           - containerPort: 8585
             protocol: TCP
+            name: http
           readinessProbe:
             failureThreshold: 5
             httpGet:
-              path: /health/ready
+              path: /q/health/ready
               port: 8585
               scheme: HTTP
             initialDelaySeconds: 10
@@ -310,6 +364,18 @@ objects:
 
 
 parameters:
+
+- name: REGISTRY_LOG_LEVEL
+  value: DEBUG
+
+- name: REGISTRY_QUARKUS_LOG_LEVEL
+  value: INFO
+
+- name: TENANT_MANAGER_LOG_LEVEL
+  value: DEBUG
+
+- name: TENANT_MANAGER_QUARKUS_LOG_LEVEL
+  value: INFO
 
 - name: SERVICE_ACCOUNT_NAME
   displayName: Service Account to use for the deployment
@@ -384,9 +450,44 @@ parameters:
 - name: KEYCLOAK_API_CLIENT_ID
   description: client id for Apicurio Registry API
   value: registry-api
-- name: KEYCLOAK_UI_CLIENT_ID
-  description: client id for Apicurio Registry UI
-  value: apicurio-registry
+
+- name: OWNER_ONLY_AUTHZ_ENABLED
+  description: flag to enable/disable owner-only authorization
+  value: "false"
+- name: ROLE_BASED_AUTHZ_ENABLED
+  description: flag to enable/disable role based authorization
+  value: "false"
+- name: REGISTRY_AUTH_ADMIN-OVERRIDE_ENABLED
+  description: flag to enable/disable the admin-override auth feature
+  value: "false"
+- name: REGISTRY_AUTH_ADMIN-OVERRIDE_FROM
+  description: property to set where to get admin-override meta-data from (e.g. token)
+  value: "token"
+- name: REGISTRY_AUTH_ADMIN-OVERRIDE_TYPE
+  description: property to set the type of admin-override meta-data (e.g. role or claim)
+  value: "role"
+- name: REGISTRY_AUTH_ADMIN-OVERRIDE_ROLE
+  description: property to set the role that activates admin-override (e.g. sr-admin)
+  value: "sr-admin"
+- name: REGISTRY_AUTH_ADMIN-OVERRIDE_CLAIM
+  description: property to set the claim that potentially activates admin-override
+  value: "is_org_admin"
+- name: REGISTRY_AUTH_ADMIN-OVERRIDE_CLAIM-VALUE
+  description: property to set the claim value that must match to activate admin-override
+  value: "true"
+- name: REGISTRY_AUTH_ROLES_ADMIN
+  description: property to set the name of the role that enables Admin access when using token based RBAC
+  value: "sr-admin"
+- name: REGISTRY_AUTH_ROLES_DEVELOPER
+  description: property to set the name of the role that enables Developer access when using token based RBAC
+  value: "sr-developer"
+- name: REGISTRY_AUTH_ROLES_READONLY
+  description: property to set the name of the role that enables ReadOnly access when using token based RBAC
+  value: "sr-readonly"
+
+- name: TENANT_MANAGER_CLIENT_SECRET_NAME
+  description: k8s secret name with client-id and client-secret to access tenant-manager
+  required: true
 
 - name: ENVOY_IMAGE
   description: Envoy image.

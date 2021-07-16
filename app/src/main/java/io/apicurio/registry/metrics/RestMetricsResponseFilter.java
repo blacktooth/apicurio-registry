@@ -19,7 +19,6 @@ import io.apicurio.registry.mt.TenantContext;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Default;
@@ -54,7 +53,8 @@ import static io.apicurio.registry.metrics.MetricsConstants.REST_REQUESTS_TAG_TE
 @ApplicationScoped
 public class RestMetricsResponseFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
+    @Inject
+    Logger log;
 
     @Inject
     MeterRegistry registry;
@@ -91,7 +91,7 @@ public class RestMetricsResponseFilter implements ContainerRequestFilter, Contai
         Timer timer = Timer
             .builder(REST_REQUESTS)
             .description(REST_REQUESTS_DESCRIPTION)
-            .tag(REST_REQUESTS_TAG_TENANT, this.tenantContext.getTenantIdOrElse(""))
+            .tag(REST_REQUESTS_TAG_TENANT, this.tenantContext.getTenantIdOrElse("")) //we may have to delete this tag
             .tag(REST_REQUESTS_TAG_PATH, this.getPath())
             .tag(REST_REQUESTS_TAG_METHOD, requestContext.getMethod())
             .tag(REST_REQUESTS_TAG_STATUS_CODE_FAMILY, this.getStatusGroup(responseContext.getStatus()))
