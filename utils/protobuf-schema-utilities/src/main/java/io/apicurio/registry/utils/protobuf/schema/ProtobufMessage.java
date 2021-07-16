@@ -79,10 +79,11 @@ public class ProtobufMessage {
             String defaultVal,
             String jsonName,
             Boolean isPacked,
+            Boolean isDeprecated,
             Integer oneOfIndex
         ) {
         FieldDescriptorProto.Label protoLabel = fieldDescriptorLabels.get(label);
-        addFieldDescriptorProto(protoLabel, type, name, num, defaultVal, jsonName, isPacked, oneOfIndex);
+        addFieldDescriptorProto(protoLabel, type, name, num, defaultVal, jsonName, isPacked, isDeprecated, oneOfIndex);
     }
 
     public void addFieldDescriptorProto(
@@ -93,6 +94,7 @@ public class ProtobufMessage {
             String defaultVal,
             String jsonName,
             Boolean isPacked,
+            Boolean isDeprecated,
             Integer oneOfIndex
         ) {
 
@@ -119,6 +121,11 @@ public class ProtobufMessage {
         if (isPacked != null) {
             DescriptorProtos.FieldOptions.Builder optionsBuilder = DescriptorProtos.FieldOptions.newBuilder();
             optionsBuilder.setPacked(isPacked);
+            fieldBuilder.mergeOptions(optionsBuilder.build());
+        }
+        if (isDeprecated != null) {
+            DescriptorProtos.FieldOptions.Builder optionsBuilder = DescriptorProtos.FieldOptions.newBuilder();
+            optionsBuilder.setDeprecated(isDeprecated);
             fieldBuilder.mergeOptions(optionsBuilder.build());
         }
         descriptorProtoBuilder.addField(fieldBuilder.build());
